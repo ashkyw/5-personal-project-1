@@ -1,0 +1,1 @@
+Allows users to drag-and-drop an Excel File and convert a something to a QR code, and save it next to the item in the workbook for scanning.
