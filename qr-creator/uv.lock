@@ -39,12 +39,14 @@ source = { virtual = "." }
 dependencies = [
     { name = "openpyxl" },
     { name = "qrcode" },
+    { name = "tkinterdnd2" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "openpyxl", specifier = "==3.1.5" },
     { name = "qrcode", specifier = "==8.2" },
+    { name = "tkinterdnd2", specifier = "==0.6.1" },
 ]
 
 [[package]]
@@ -57,4 +59,13 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/8f/b2/7fc2931bfae0af02d5f53b174e9cf701adbb35f39d69c2af63d4a39f81a9/qrcode-8.2.tar.gz", hash = "sha256:35c3f2a4172b33136ab9f6b3ef1c00260dd2f66f858f24d88418a015f446506c", size = 43317, upload-time = "2025-05-01T15:44:24.726Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/dd/b8/d2d6d731733f51684bbf76bf34dab3b70a9148e8f2cef2bb544fccec681a/qrcode-8.2-py3-none-any.whl", hash = "sha256:16e64e0716c14960108e85d853062c9e8bba5ca8252c0b4d0231b9df4060ff4f", size = 45986, upload-time = "2025-05-01T15:44:22.781Z" },
+]
+
+[[package]]
+name = "tkinterdnd2"
+version = "0.6.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c7/38/418c99103a4fe47356f60c16821671c6e471c3b3b1e35e1d3dba38139a14/tkinterdnd2-0.6.1.tar.gz", hash = "sha256:b4619cbd1d65bc928dd74443b6b74c38637b527d230dbf0088fc77afb5b406e5", size = 727894, upload-time = "2026-07-04T14:39:33.45Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7c/f1/da0d02a47cafc690ae88bb6f34173a7b4d07344fca8d0c3735e459060810/tkinterdnd2-0.6.1-py3-none-any.whl", hash = "sha256:3f5d750c0d8796e209fd53c45fcb4d54cc1ac91500b58499ba701dca22a662b4", size = 810542, upload-time = "2026-07-04T14:39:31.578Z" },
 ]
