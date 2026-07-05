@@ -1,9 +1,9 @@
 import qrcode
 import openpyxl
-import gui
+from gui import draw_window
 
 def main():
-    gui.draw_window()
+    draw_window()
 
 if __name__ == "__main__":
     main()
