@@ -1,13 +1,9 @@
 import qrcode
 import openpyxl
-from gui import draw_simple_window, draw_interactive_window, drop_file
+import gui
 
-def generate_qr_codes(file: str)-> str:
-    PASS
-
-def main()-> None:
-    draw_interactive_window()
-    drop_file()
+def main():
+    gui.draw_window()
 
 if __name__ == "__main__":
     main()
