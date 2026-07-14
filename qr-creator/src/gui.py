@@ -2,7 +2,6 @@ import qrcode
 import openpyxl
 import customtkinter as ctk
 from tkinterdnd2 import DND_FILES, TkinterDnD
-from pathlib import Path
 
 class TopLevelWindow(ctk.CTkToplevel):
     def __init__(self, *args, **kwargs):
@@ -12,71 +11,48 @@ class TopLevelWindow(ctk.CTkToplevel):
         self.label = ctk.CTkLabel(self, text="TopLevelWindow")
         self.label.pack(padx=20, pady=20)
 
-class DragAndDropFrame(ctk.CTkFrame):
-    def __init__(self, master, title, label):
+class LabelText(ctk.CTkFrame):
+    def __init__(self, master, values):
         super().__init__(master)
 
+        self.grid_columnconfigure(0, weight=10)
+        self.values = values
+
+        for i, value in enumerate(self.values):
+            self.label = ctk.CTkLabel(self, text=value, fg_color="transparent", justify="center")
+            self.label.grid(row=i+1, column=0, padx=10, pady=(10, 0), sticky="ew")
+
+class DragAndDropFrame(ctk.CTkFrame):
+    def __init__(self, master, title, on_files=None):
+        super().__init__(master)
         self.title = title
-        self.files = []
-        self.drop_label = label
+        self.on_files = on_files
 
-        self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=10)
 
-        self.title = ctk.CTkLabel(self, text=self.title, fg_color="gray30", corner_radius=6)
-        self.title.grid(row=0, column=0, padx=10, pady=(10, 0), sticky="ew")
-
-        self.drop_label = ctk.CTkLabel(self, text=self.drop_label, font=ctk.CTkFont(size=16, weight="bold"))
-        self.drop_label.grid(row=0, column=0, padx=10, pady=(10,0), sticky="ew")
+        self.title = ctk.CTkLabel(self, text=self.title, font=ctk.CTkFont(size=16, weight="bold"))
+        self.title.grid(row=0, column=0, padx=10, pady=(10,0), sticky="ew")
 
         self.drop_target_register(DND_FILES)
         self.dnd_bind("<<Drop>>", self.on_drop)
 
-        #TODO
-        # Add a textbox that posts the individual file names for user display in this frame
-    # Define captured event data
+    # ID and filter unwanted captured data
     def on_drop(self, event):
-        raw = event.data.strip()
-        self.files = self.parse_dnd_files(raw)
-        self.title.configure(text=f"{self.title} ({len(self.files)})")
+        files = self.tk.splitlist(event.data)
+        valid = self.validate_files(files)
 
-    def parse_dnd_files(self, raw: str):
-        raw = raw.strip()
+        if self.on_files:
+            self.on_files(valid)
 
-        if not raw:
-            return []
+    # Validate files before displaying
+    def validate_files(self, files):
+        valid_list = []
+        for file in files:
+            if file.endswith(".png"):
+                if file not in valid_list:
+                    valid_list.append(file)
 
-        if raw.startswith("{") is False and raw.count(" ") == 0 and raw.count("\n") == 0:
-            print([raw])
-            return [raw]
-
-        out = []
-        cur = ""
-        in_braces = False
-
-        for ch in raw:
-            if ch == "{":
-                in_braces = True
-                continue
-            if ch == "}":
-                in_braces = False
-                out.append(cur)
-                cur = ""
-                continue
-            if ch == " " and not in_braces:
-                if cur:
-                    out.append(cur)
-                    cur = ""
-                continue
-            cur += ch
-
-        if cur:
-            out.append(cur)
-
-        print(out)
-        return out
-
-    def get_files(self):
-        return list(self.files)
+        return valid_list
 
 class ButtonFrame(ctk.CTkFrame):
     def __init__(self, master, title, values):
@@ -144,28 +120,42 @@ class App(TkinterDnD.Tk):
         super().__init__()
         # Set App window settings
         self.title("App title goes here")
-        self.geometry("400x380")
+        self.geometry("800x640")
         self.grid_columnconfigure((0, 1), weight=1)
         self.grid_rowconfigure(0, weight=1)
         self.configure(bg="black")
+
+        self.files = []
 
         self.toplevel_window = None
 
         self.button = ctk.CTkButton(self, text="New window", command=self.create_toplevel_window)
         self.button.grid(row=3, column=0, padx=10, pady=10, sticky="ew", columnspan=2)
+
         # Set ButtonFrame names & settings
         self.button_frame = ButtonFrame(self, "Functions", values=["QR Code", "Something else"])
-        self.button_frame.grid(row=0, column=0, padx=10, pady=(10,0), sticky="nsw")
-        # Set DragAndDropFrame labels & settings
-        self.drop_frame = DragAndDropFrame(self, "File", "Drag files here...")
-        self.drop_frame.grid(row=0, column=1, padx=(0,10), pady=(10,0), sticky="nsew")
-        self.drop_frame.configure(fg_color="gray30")
+        self.button_frame.grid(row=0, column=0, padx=10, pady=(10,0), sticky="nsew")
 
-    def button_callback(self) -> None:
-        print("checked checkboxes", self.checkbox_frame.get())
-        print("radiobutton_frame", self.radiobutton_frame.get())
+        # Set DragAndDropFrame labels & settings
+        self.drop_frame = DragAndDropFrame(self, "Drag files here...", on_files=self.files_dropped)
+        self.drop_frame.grid(row=0, column=1, padx=(0,10), pady=(10,0), sticky="nsew", columnspan=2)
+        self.drop_frame.configure(fg_color="transparent")
+
+    # Hands files off to other functions
+    def files_dropped(self, files):
+        self.files = files
+
+        # Display and update dropped files
+        # If frame exists, clear it
+        if hasattr(self, "text_frame"):
+            self.text_frame.destroy()
+
+        # Set LabelText labels & values
+        self.text_frame = LabelText(self.drop_frame, self.files)
+        self.text_frame.grid(row=1, column=0, padx=10, pady=(10,0), sticky="ew")
 
     def create_toplevel_window(self) -> None:
+
         if self.toplevel_window is None or not self.toplevel_window.winfo_exists():
             self.toplevel_window = TopLevelWindow(self)
         else:
@@ -182,3 +172,7 @@ class App(TkinterDnD.Tk):
                 img = qrcode.make(cleaned_row)
                 img.save(f"{i}.png")
                 i += 1
+
+    def button_callback(self) -> None:
+        print("checked checkboxes", self.checkbox_frame.get())
+        print("radiobutton_frame", self.radiobutton_frame.get())
