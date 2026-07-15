@@ -16,17 +16,18 @@ class LabelText(ctk.CTkFrame):
         super().__init__(master)
 
         self.grid_columnconfigure(0, weight=10)
-        self.values = values
+        self.values: list[str] = values
 
         for i, value in enumerate(self.values):
             self.label = ctk.CTkLabel(self, text=value, fg_color="transparent", justify="center")
             self.label.grid(row=i+1, column=0, padx=10, pady=(10, 0), sticky="ew")
 
 class DragAndDropFrame(ctk.CTkFrame):
-    def __init__(self, master, title, on_files=None):
+    def __init__(self, master, title, on_files=None, valid_extensions=None):
         super().__init__(master)
-        self.title = title
-        self.on_files = on_files
+        self.title: str = title
+        self.on_files: list[str] = on_files
+        self.valid_extensions: tuple[str] = valid_extensions
 
         self.grid_columnconfigure(0, weight=10)
 
@@ -37,45 +38,47 @@ class DragAndDropFrame(ctk.CTkFrame):
         self.dnd_bind("<<Drop>>", self.on_drop)
 
     # ID and filter unwanted captured data
-    def on_drop(self, event):
+    def on_drop(self, event: list[str]) -> None:
         files = self.tk.splitlist(event.data)
-        valid = self.validate_files(files)
+        valid = self.validate_files(files, self.valid_extensions)
 
         if self.on_files:
             self.on_files(valid)
 
     # Validate files before displaying
-    def validate_files(self, files):
-        valid_list = []
+    def validate_files(self, files: list[str], valid_extensions: tuple[str]):
+        valid_files: list[str] = []
         for file in files:
-            if file.endswith(".png"):
-                if file not in valid_list:
-                    valid_list.append(file)
+            if file.endswith(self.valid_extensions):
+                if file not in valid_files:
+                    valid_files.append(file)
 
-        return valid_list
+        return valid_files
 
 class ButtonFrame(ctk.CTkFrame):
-    def __init__(self, master, title, values):
+    # Takes text and commands as lists
+    def __init__(self, master, title, text=None, commands=None):
         super().__init__(master)
         self.grid_columnconfigure(0, weight=1)
-        self.values = values
-        self.title = title
-        self.buttons = []
+        self.title: str = title
+        self.button_text: str = text
+        self.buttons: list[str] = []
+        self.commands: list[str] = commands
 
         self.title = ctk.CTkLabel(self, text=self.title, fg_color="gray30", corner_radius=6)
         self.title.grid(row=0, column=0, padx=10, pady=(10, 0), sticky="ew")
-
-        for i, value in enumerate(self.values):
-            button = ctk.CTkButton(self, text=value)
-            button.grid(row=i+1, column=0, padx=10, pady=(10, 0), sticky="ew")
+        if self.button_text is not None and self.commands is not None:
+            for i, text in enumerate(self.button_text):
+                button = ctk.CTkButton(self, text=text, command=self.commands[i])
+                button.grid(row=i+1, column=0, padx=10, pady=(10, 0), sticky="ew")
 
 class CheckBoxFrame(ctk.CTkFrame):
     def __init__(self, master, title, values):
         super().__init__(master)
         self.grid_columnconfigure(0, weight=1)
-        self.values = values
-        self.title = title
-        self.checkboxes = []
+        self.values: list[str] = values
+        self.title: str = title
+        self.checkboxes: list[str, int] = []
 
         self.title = ctk.CTkLabel(self, text=self.title, fg_color="gray30", corner_radius=6)
         self.title.grid(row=0, column=0, padx=10, pady=(10, 0), sticky="ew")
@@ -85,8 +88,8 @@ class CheckBoxFrame(ctk.CTkFrame):
             checkbox.grid(row=i+1, column=0, padx=10, pady=(10, 0), sticky="w")
             self.checkboxes.append(checkbox)
 
-    def get(self) -> str:
-        checked_checkboxes = []
+    def get(self) -> list[str, int]:
+        checked_checkboxes: list[str, int] = []
         for checkbox in self.checkboxes:
             if checkbox.get() == 1:
                 checked_checkboxes.append(checkbox.cget("text"))
@@ -96,9 +99,9 @@ class RadiobuttonFrame(ctk.CTkFrame):
     def __init__(self, master, title, values):
         super().__init__(master)
         self.grid_columnconfigure(0, weight=1)
-        self.values = values
-        self.title = title
-        self.radiobuttons = []
+        self.values: list[str] = values
+        self.title: str = title
+        self.radiobuttons: list[str] = []
         self.variable = ctk.StringVar(value="")
 
         self.title = ctk.CTkLabel(self, text=self.title, fg_color="gray30", corner_radius=6)
@@ -123,37 +126,56 @@ class App(TkinterDnD.Tk):
         self.geometry("800x640")
         self.grid_columnconfigure((0, 1), weight=1)
         self.grid_rowconfigure(0, weight=1)
-        self.configure(bg="black")
+        self.configure(bg="gray30")
 
-        self.files = []
+        self.files: list[str] = []
 
         self.toplevel_window = None
 
         self.button = ctk.CTkButton(self, text="New window", command=self.create_toplevel_window)
         self.button.grid(row=3, column=0, padx=10, pady=10, sticky="ew", columnspan=2)
 
-        # Set ButtonFrame names & settings
-        self.button_frame = ButtonFrame(self, "Functions", values=["QR Code", "Something else"])
+        # Set ButtonFrame buttons & settings
+        self.button_frame = ButtonFrame(
+            self, "Functions", text=["New Window", "Print Success"],
+            commands=[self.create_toplevel_window, self.test_adding_commands_to_buttons]
+        )
         self.button_frame.grid(row=0, column=0, padx=10, pady=(10,0), sticky="nsew")
 
         # Set DragAndDropFrame labels & settings
-        self.drop_frame = DragAndDropFrame(self, "Drag files here...", on_files=self.files_dropped)
+        self.drop_frame = DragAndDropFrame(
+            self, "Drag files here...", on_files=self.files_dropped,
+            valid_extensions=(".png", ".pdf")
+        )
         self.drop_frame.grid(row=0, column=1, padx=(0,10), pady=(10,0), sticky="nsew", columnspan=2)
         self.drop_frame.configure(fg_color="transparent")
 
     # Hands files off to other functions
-    def files_dropped(self, files):
-        self.files = files
+    def files_dropped(self, files: list[str]) -> None:
+        self.files: list[str] = files
 
         # Display and update dropped files
         # If frame exists, clear it
-        if hasattr(self, "text_frame"):
-            self.text_frame.destroy()
+        if hasattr(self, "drop_text_frame"):
+            self.drop_text_frame.destroy()
+            self.remove_frame.destroy()
 
-        # Set LabelText labels & values
-        self.text_frame = LabelText(self.drop_frame, self.files)
-        self.text_frame.grid(row=1, column=0, padx=10, pady=(10,0), sticky="ew")
+        # Set child labels & values
+        self.drop_text_frame = LabelText(self.drop_frame, self.files)
+        self.drop_text_frame.grid(row=1, column=2, padx=10, pady=(10,0), sticky="ew")
 
+        self.create_remove_frame(files)
+
+    # Creates button frame to remove file from files list
+    def create_remove_frame(self, files: list[str]) -> None:
+        self.remove_frame = ButtonFrame(self.drop_frame, "Remove Files")
+        self.remove_frame.grid(row=1, column=0, padx=10, pady=(10,0), sticky="ew")
+        if self.files != None:
+            for i, file in enumerate(self.files):
+                self.button = ctk.CTkButton(self.remove_frame, text="Remove", command=self.test_adding_commands_to_buttons)
+                self.button.grid(row=i+1, column=3, padx=10, pady=(10,0), sticky="ew")
+
+    # Button functions
     def create_toplevel_window(self) -> None:
 
         if self.toplevel_window is None or not self.toplevel_window.winfo_exists():
@@ -161,7 +183,13 @@ class App(TkinterDnD.Tk):
         else:
             self.toplevel_window.focus()
 
-    def create_qrcodes(workbook):
+    def test_adding_commands_to_buttons(self) -> str:
+        print("Every thing works")
+
+    def remove_file_from_list(self, files: list [str]) -> None:
+        self.files.pop()
+
+    def create_qrcodes(workbook: str) -> None:
         data_book = openpyxl.load_workbook(workbook)
         data_tab = data_book.active
         i = 0
