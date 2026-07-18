@@ -6,7 +6,7 @@ from tkinterdnd2 import DND_FILES, TkinterDnD
 from openpyxl.drawing.image import Image
 
 class TopLevelWindow(ctk.CTkToplevel):
-    def __init__(self, master, text):
+    def __init__(self, master, text: str):
         super().__init__(master)
         self.geometry("400x300")
 
@@ -16,7 +16,7 @@ class TopLevelWindow(ctk.CTkToplevel):
         self.label.pack(padx=20, pady=20)
 
 class LabelText(ctk.CTkFrame):
-    def __init__(self, master, values):
+    def __init__(self, master, values: list[str]):
         super().__init__(master)
 
         self.grid_columnconfigure(0, weight=10)
@@ -27,7 +27,7 @@ class LabelText(ctk.CTkFrame):
             self.label.grid(row=i+1, column=0, padx=10, pady=(10, 0), sticky="ew")
 
 class DragAndDropFrame(ctk.CTkFrame):
-    def __init__(self, master, title, on_files=None, valid_extensions=None):
+    def __init__(self, master, title: str, on_files: list[str]=None, valid_extensions: tuple[str]=None):
         super().__init__(master)
         self.title: str = title
         self.on_files: list[str] = on_files
@@ -61,7 +61,7 @@ class DragAndDropFrame(ctk.CTkFrame):
 
 class ButtonFrame(ctk.CTkFrame):
     # Takes text and commands as lists
-    def __init__(self, master, title, text=None, commands=None):
+    def __init__(self, master, title: str, text: list[str]=None, commands: list[str]=None):
         super().__init__(master)
         self.grid_columnconfigure(0, weight=1)
         self.title: str = title
@@ -77,7 +77,7 @@ class ButtonFrame(ctk.CTkFrame):
                 button.grid(row=i+1, column=0, padx=10, pady=(10, 0), sticky="ew")
 
 class CheckBoxFrame(ctk.CTkFrame):
-    def __init__(self, master, title, values):
+    def __init__(self, master, title: str, values: list[str]):
         super().__init__(master)
         self.grid_columnconfigure(0, weight=1)
         self.values: list[str] = values
@@ -100,7 +100,7 @@ class CheckBoxFrame(ctk.CTkFrame):
         return checked_checkboxes
 
 class RadiobuttonFrame(ctk.CTkFrame):
-    def __init__(self, master, title, values):
+    def __init__(self, master, title: str, values: list[str]):
         super().__init__(master)
         self.grid_columnconfigure(0, weight=1)
         self.values: list[str] = values
@@ -119,7 +119,7 @@ class RadiobuttonFrame(ctk.CTkFrame):
     def get(self) -> str:
         return self.variable.get()
 
-    def set(self, value) -> None:
+    def set(self, value: str) -> None:
         self.variable.set(value)
 
 class App(TkinterDnD.Tk):
@@ -168,14 +168,15 @@ class App(TkinterDnD.Tk):
         self.drop_text_frame.grid(row=1, column=0, padx=10, pady=(10,0), sticky="ew")
 
     # Button functions
-    def create_toplevel_window(self, text) -> None:
+    # Create new toplevel window
+    def create_toplevel_window(self, text: str) -> None:
 
         if self.toplevel_window is None or not self.toplevel_window.winfo_exists():
             self.toplevel_window = TopLevelWindow(self, text=text)
         else:
             self.toplevel_window.focus()
 
-    # Clear current active list
+    # Clear current active list, update display frame
     def clear_files_list(self) -> None:
         self.files = []
 
@@ -195,6 +196,7 @@ class App(TkinterDnD.Tk):
                 # set workbook and sheet
                 workbook = openpyxl.load_workbook(file)
                 ws = workbook.active
+                # split file for saving
                 file_path, extension = file.split(".")
                 for i, row in enumerate(ws.iter_rows(values_only=True), start=1):
                     if row != (None,):
@@ -202,9 +204,9 @@ class App(TkinterDnD.Tk):
                         cleaned_row = "".join(map(str, row))
                         qr_img = qrcode.make(cleaned_row)
                         qr_img = self.format_qrcode_images(qr_img, i)
-                        #ws.add_image(qr_img, f"C{i}")
-                        ws.add_image(qr_img, f"C{i}")
+                        ws.add_image(qr_img)
                 workbook.save(f"{file_path}_qrcodes.{extension}")
+                # Provide user feedback
                 self.create_toplevel_window("Operation Success!")
 
     # Helper function to format Excel sheet
@@ -215,9 +217,11 @@ class App(TkinterDnD.Tk):
 
     # Helper function to format and temp store QR Codes
     def format_qrcode_images(self, img, num: int) -> Image:
+        # Create temp buffer to store image
         buffer = BytesIO()
         img.save(buffer, format="PNG")
         buffer.seek(0)
+        # Set img to be temp stored image, set parameters
         img = Image(buffer)
         img.width = 225
         img.height = 225
