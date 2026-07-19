@@ -8,11 +8,11 @@ from openpyxl.drawing.image import Image
 class TopLevelWindow(ctk.CTkToplevel):
     def __init__(self, master, text: str):
         super().__init__(master)
-        self.geometry("400x300")
+        self.geometry("300x100")
 
         self.text: str = text
 
-        self.label = ctk.CTkLabel(self, text=text)
+        self.label = ctk.CTkLabel(self, text=self.text, font=ctk.CTkFont(size=16, weight="bold"), justify="center")
         self.label.pack(padx=20, pady=20)
 
 class LabelText(ctk.CTkFrame):
@@ -39,7 +39,7 @@ class DragAndDropFrame(ctk.CTkFrame):
 
         self.grid_columnconfigure(0, weight=1)
 
-        self.title = ctk.CTkLabel(self, text=self.title, font=ctk.CTkFont(size=16, weight="bold"))
+        self.title = ctk.CTkLabel(self, text=self.title, font=ctk.CTkFont(size=16, weight="bold"), justify="center")
         self.title.grid(row=0, column=0, padx=10, pady=(10,0), sticky="ew")
 
         self.drop_target_register(DND_FILES)
@@ -137,10 +137,10 @@ class App(TkinterDnD.Tk):
         self.configure(bg="gray10")
 
         self.files: list[str] = []
-
         self.toplevel_window = None
+
         valid_extensions: tuple[str] = (".xlsx", ".xlsm")
-        dnd_title_message: str = f"Drag files here...\n\n Files must be saved in {valid_extensions} format."
+        dnd_title_message: str = f"Files must be saved in {valid_extensions} format. \n\n Drag files onto this text... "
 
         # Set DragAndDropFrame labels & settings
         self.drop_frame = DragAndDropFrame(
@@ -152,10 +152,11 @@ class App(TkinterDnD.Tk):
 
         # Set ButtonFrame buttons & settings
         self.button_frame = ButtonFrame(
-            self, "Functions", text=["Create QR Codes"],
+            self, title="Functions", text=["Create QR Codes"],
             commands=[self.create_qrcodes]
         )
         self.button_frame.grid(row=0, column=0, padx=10, pady=(10,0), sticky="nsew")
+        self.button_frame.configure(border_width=1, border_color="black")
 
         self.button = ctk.CTkButton(self, text="Clear List", command=self.clear_files_list)
         self.button.grid(row=3, column=0, padx=10, pady=10, sticky="ew", columnspan=2)
@@ -166,7 +167,7 @@ class App(TkinterDnD.Tk):
 
         # Display and update dropped files
         # If frame exists, clear it
-        self.clear_drop_frame_text
+        self.clear_drop_frame_text()
 
         # Set child labels & values
         self.drop_frame_text = LabelText(self.drop_frame, self.files)
@@ -174,26 +175,31 @@ class App(TkinterDnD.Tk):
 
     # Button functions
     # Create new toplevel window
-    def create_toplevel_window(self, text: str) -> None:
-
+    def create_toplevel_window(self, title: str, text: str) -> None:
         if self.toplevel_window is None or not self.toplevel_window.winfo_exists():
             self.toplevel_window = TopLevelWindow(self, text=text)
+            self.toplevel_window.title(title)
         else:
             self.toplevel_window.focus()
-
-    # Clear current active list, update display frame
-    def clear_files_list(self) -> None:
-        self.files = []
-        self.clear_drop_frame_text
 
     # Fun button to test things
     def test_adding_commands_to_buttons(self) -> str:
         print("Every thing works")
 
+    # Exists in case it's ever needed
+    def button_callback(self) -> None:
+        print("checked checkboxes", self.checkbox_frame.get())
+        print("radiobutton_frame", self.radiobutton_frame.get())
+
+    # Clear current active list, update display frame
+    def clear_files_list(self) -> None:
+        self.files = []
+        self.clear_drop_frame_text()
+
     # Creates QR Codes and stores them in excel file
     def create_qrcodes(self) -> None:
         if self.files == []:
-            self.create_toplevel_window("No files found")
+            self.create_toplevel_window("Error", text="No files found")
         else:
             try:
                 for file in self.files:
@@ -211,21 +217,20 @@ class App(TkinterDnD.Tk):
                             ws.add_image(qr_img)
                     workbook.save(f"{file_path}_qrcodes.{extension}")
                     # Provide user feedback
-                    self.create_toplevel_window("Operation Success!")
-            except KeyError:
-                    self.create_toplevel_window(
-                        "Operation Failed.\n File(s) may be corrupted. Try again."
-                    )
+                    self.create_toplevel_window("Success", text="Operation Success!")
+            except Exception:
+                    self.create_toplevel_window("Error", text="Operation Failed.\n File(s) may be corrupted. Try again.", )
                     self.files=[]
-                    self.clear_drop_frame_text
+                    self.clear_drop_frame_text()
 
-    # Helper function to format Excel sheet
+    # Helper Functions
+    # Format Excel sheet
     def format_excel_sheet(self, ws, row: int) -> None:
         ws.row_dimensions[row].height = 185
         ws.column_dimensions["B"].width = 2
         ws.column_dimensions["C"].width = 28
 
-    # Helper function to format and temp store QR Codes
+    # Format and temp store QR Codes
     def format_qrcode_images(self, img, num: int) -> Image:
         # Create temp buffer to store image
         buffer = BytesIO()
@@ -237,10 +242,6 @@ class App(TkinterDnD.Tk):
         img.height = 225
         img.anchor = f"C{num}"
         return img
-
-    def button_callback(self) -> None:
-        print("checked checkboxes", self.checkbox_frame.get())
-        print("radiobutton_frame", self.radiobutton_frame.get())
 
     # Clear Active Frames
     def clear_drop_frame_text(self) -> None:
