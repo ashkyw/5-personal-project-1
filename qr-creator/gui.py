@@ -22,9 +22,13 @@ class LabelText(ctk.CTkFrame):
         self.grid_columnconfigure(0, weight=10)
         self.values: list[str] = values
 
-        for i, value in enumerate(self.values):
-            self.label = ctk.CTkLabel(self, text=value, fg_color="transparent", justify="center")
-            self.label.grid(row=i+1, column=0, padx=10, pady=(10, 0), sticky="ew")
+        if len(self.values) == 1:
+            for i, value in enumerate(self.values):
+                self.label = ctk.CTkLabel(self, text=value, fg_color="transparent", justify="center")
+                self.label.grid(row=i+1, column=0, padx=10, pady=(10, 0), sticky="ew")
+        else:
+            self.label = ctk.CTkLabel(self, text=self.values, fg_color="transparent", justify="center")
+            self.label.grid(row=1, column=0, padx=10, pady=(10, 0), sticky="ew")
 
 class DragAndDropFrame(ctk.CTkFrame):
     def __init__(self, master, title: str, on_files: list[str]=None, valid_extensions: tuple[str]=None):
@@ -135,11 +139,13 @@ class App(TkinterDnD.Tk):
         self.files: list[str] = []
 
         self.toplevel_window = None
+        valid_extensions: tuple[str] = (".xlsx", ".xlsm")
+        dnd_title_message: str = f"Drag files here...\n\n Files must be saved in {valid_extensions} format."
 
         # Set DragAndDropFrame labels & settings
         self.drop_frame = DragAndDropFrame(
-            self, "Drag files here...", on_files=self.files_dropped,
-            valid_extensions=(".xlsx", ".xlsm", ".xlsb")
+            self, title=dnd_title_message, on_files=self.files_dropped,
+            valid_extensions=valid_extensions
         )
         self.drop_frame.grid(row=0, column=1, padx=(0,10), pady=(10,0), sticky="nsew")
         self.drop_frame.configure(fg_color="gray30", border_width=1, border_color="black")
@@ -154,18 +160,17 @@ class App(TkinterDnD.Tk):
         self.button = ctk.CTkButton(self, text="Clear List", command=self.clear_files_list)
         self.button.grid(row=3, column=0, padx=10, pady=10, sticky="ew", columnspan=2)
 
-    # Hands files off to other functions
+    # Hands files off to other functions, displays files in list
     def files_dropped(self, files: list[str]) -> None:
         self.files: list[str] = files
 
         # Display and update dropped files
         # If frame exists, clear it
-        if hasattr(self, "drop_text_frame"):
-            self.drop_text_frame.destroy()
+        self.clear_drop_frame_text
 
         # Set child labels & values
-        self.drop_text_frame = LabelText(self.drop_frame, self.files)
-        self.drop_text_frame.grid(row=1, column=0, padx=10, pady=(10,0), sticky="ew")
+        self.drop_frame_text = LabelText(self.drop_frame, self.files)
+        self.drop_frame_text.grid(row=1, column=0, padx=10, pady=(10,0), sticky="ew")
 
     # Button functions
     # Create new toplevel window
@@ -179,9 +184,7 @@ class App(TkinterDnD.Tk):
     # Clear current active list, update display frame
     def clear_files_list(self) -> None:
         self.files = []
-
-        if hasattr(self, "drop_text_frame"):
-            self.drop_text_frame.destroy()
+        self.clear_drop_frame_text
 
     # Fun button to test things
     def test_adding_commands_to_buttons(self) -> str:
@@ -192,22 +195,29 @@ class App(TkinterDnD.Tk):
         if self.files == []:
             self.create_toplevel_window("No files found")
         else:
-            for file in self.files:
-                # set workbook and sheet
-                workbook = openpyxl.load_workbook(file)
-                ws = workbook.active
-                # split file for saving
-                file_path, extension = file.split(".")
-                for i, row in enumerate(ws.iter_rows(values_only=True), start=1):
-                    if row != (None,):
-                        self.format_excel_sheet(ws, i)
-                        cleaned_row = "".join(map(str, row))
-                        qr_img = qrcode.make(cleaned_row)
-                        qr_img = self.format_qrcode_images(qr_img, i)
-                        ws.add_image(qr_img)
-                workbook.save(f"{file_path}_qrcodes.{extension}")
-                # Provide user feedback
-                self.create_toplevel_window("Operation Success!")
+            try:
+                for file in self.files:
+                    # set workbook and sheet
+                    workbook = openpyxl.load_workbook(file)
+                    ws = workbook.active
+                    # split file for saving
+                    file_path, extension = file.split(".")
+                    for i, row in enumerate(ws.iter_rows(values_only=True), start=1):
+                        if row != (None,):
+                            self.format_excel_sheet(ws, i)
+                            cleaned_row = "".join(map(str, row))
+                            qr_img = qrcode.make(cleaned_row)
+                            qr_img = self.format_qrcode_images(qr_img, i)
+                            ws.add_image(qr_img)
+                    workbook.save(f"{file_path}_qrcodes.{extension}")
+                    # Provide user feedback
+                    self.create_toplevel_window("Operation Success!")
+            except KeyError:
+                    self.create_toplevel_window(
+                        "Operation Failed.\n File(s) may be corrupted. Try again."
+                    )
+                    self.files=[]
+                    self.clear_drop_frame_text
 
     # Helper function to format Excel sheet
     def format_excel_sheet(self, ws, row: int) -> None:
@@ -231,3 +241,8 @@ class App(TkinterDnD.Tk):
     def button_callback(self) -> None:
         print("checked checkboxes", self.checkbox_frame.get())
         print("radiobutton_frame", self.radiobutton_frame.get())
+
+    # Clear Active Frames
+    def clear_drop_frame_text(self) -> None:
+        if hasattr(self, "drop_frame_text"):
+            self.drop_frame_text.destroy()
