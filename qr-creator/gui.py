@@ -4,11 +4,12 @@ import customtkinter as ctk
 from io import BytesIO
 from tkinterdnd2 import DND_FILES, TkinterDnD
 from openpyxl.drawing.image import Image
+from pypdf import PdfReader
 
 class TopLevelWindow(ctk.CTkToplevel):
     def __init__(self, master, text: str):
         super().__init__(master)
-        self.geometry("300x100")
+        self.geometry("400x300")
 
         self.text: str = text
 
@@ -18,11 +19,9 @@ class TopLevelWindow(ctk.CTkToplevel):
 class LabelText(ctk.CTkFrame):
     def __init__(self, master, values: list[str]):
         super().__init__(master)
-
         self.grid_columnconfigure(0, weight=10)
         self.values: list[str] = values
-
-        if len(self.values) == 1:
+        if len(self.values) != 1:
             for i, value in enumerate(self.values):
                 self.label = ctk.CTkLabel(self, text=value, fg_color="transparent", justify="center")
                 self.label.grid(row=i+1, column=0, padx=10, pady=(10, 0), sticky="ew")
@@ -56,6 +55,7 @@ class DragAndDropFrame(ctk.CTkFrame):
     # Validate files before displaying
     def validate_files(self, files: list[str], valid_extensions: tuple[str]):
         valid_files: list[str] = []
+
         for file in files:
             if file.endswith(self.valid_extensions):
                 if file not in valid_files:
@@ -78,7 +78,7 @@ class ButtonFrame(ctk.CTkFrame):
         if self.button_text is not None and self.commands is not None:
             for i, text in enumerate(self.button_text):
                 button = ctk.CTkButton(self, text=text, command=self.commands[i])
-                button.grid(row=i+1, column=0, padx=10, pady=(10, 0), sticky="ew")
+                button.grid(row=i+1, column=0, padx=10, pady=(10, 0), sticky="nsew")
 
 class CheckBoxFrame(ctk.CTkFrame):
     def __init__(self, master, title: str, values: list[str]):
@@ -139,8 +139,11 @@ class App(TkinterDnD.Tk):
         self.files: list[str] = []
         self.toplevel_window = None
 
-        valid_extensions: tuple[str] = (".xlsx", ".xlsm")
-        dnd_title_message: str = f"Files must be saved in {valid_extensions} format. \n\n Drag files onto this text... "
+        valid_extensions: tuple[str] = (".xlsx", ".pdf")
+        first_type, second_type = valid_extensions
+        dnd_title_message: str = f'Files must be saved in "{first_type}" or "{second_type}" format. \n\n Drag files onto this text... '
+
+        self.reset_drop_frame_related_frames()
 
         # Set DragAndDropFrame labels & settings
         self.drop_frame = DragAndDropFrame(
@@ -150,28 +153,8 @@ class App(TkinterDnD.Tk):
         self.drop_frame.grid(row=0, column=1, padx=(0,10), pady=(10,0), sticky="nsew")
         self.drop_frame.configure(fg_color="gray30", border_width=1, border_color="black")
 
-        # Set ButtonFrame buttons & settings
-        self.button_frame = ButtonFrame(
-            self, title="Functions", text=["Create QR Codes"],
-            commands=[self.create_qrcodes]
-        )
-        self.button_frame.grid(row=0, column=0, padx=10, pady=(10,0), sticky="nsew")
-        self.button_frame.configure(border_width=1, border_color="black")
-
         self.button = ctk.CTkButton(self, text="Clear List", command=self.clear_files_list)
         self.button.grid(row=3, column=0, padx=10, pady=10, sticky="ew", columnspan=2)
-
-    # Hands files off to other functions, displays files in list
-    def files_dropped(self, files: list[str]) -> None:
-        self.files: list[str] = files
-
-        # Display and update dropped files
-        # If frame exists, clear it
-        self.clear_drop_frame_text()
-
-        # Set child labels & values
-        self.drop_frame_text = LabelText(self.drop_frame, self.files)
-        self.drop_frame_text.grid(row=1, column=0, padx=10, pady=(10,0), sticky="ew")
 
     # Button functions
     # Create new toplevel window
@@ -183,7 +166,7 @@ class App(TkinterDnD.Tk):
             self.toplevel_window.focus()
 
     # Fun button to test things
-    def test_adding_commands_to_buttons(self) -> str:
+    def test_buttons(self) -> str:
         print("Every thing works")
 
     # Exists in case it's ever needed
@@ -194,7 +177,7 @@ class App(TkinterDnD.Tk):
     # Clear current active list, update display frame
     def clear_files_list(self) -> None:
         self.files = []
-        self.clear_drop_frame_text()
+        self.reset_drop_frame_related_frames()
 
     # Creates QR Codes and stores them in excel file
     def create_qrcodes(self) -> None:
@@ -219,19 +202,39 @@ class App(TkinterDnD.Tk):
                     # Provide user feedback
                     self.create_toplevel_window("Success", text="Operation Success!")
             except Exception:
-                    self.create_toplevel_window("Error", text="Operation Failed.\n File(s) may be corrupted. Try again.", )
+                    self.create_toplevel_window("Error", text="Operation Failed.\n\n File(s) may be corrupted. Try again.", )
                     self.files=[]
-                    self.clear_drop_frame_text()
+                    self.reset_drop_frame_related_frames()
+
+    # Removes PDF password, reformats file name
+    def remove_pdf_password(self) -> None:
+        print("It's a newly formatted PDF!")
 
     # Helper Functions
+    # Hands files off to other functions, displays files in list
+    def files_dropped(self, files: list[str]) -> None:
+        self.files: list[str] = files
+
+        # If frame exists, reset it
+        self.reset_drop_frame_related_frames()
+
+        # Set child labels & values
+        try:
+            self.drop_frame_text = LabelText(self.drop_frame, values=self.count_and_filter_file_types())
+            self.drop_frame_text.grid(row=1, column=0, padx=10, pady=(10,0), sticky="ew")
+        except Exception:
+            self.create_toplevel_window(title="Error", text="Cannot filter file types.", )
+            self.files=[]
+            self.reset_drop_frame_related_frames()
+
     # Format Excel sheet
-    def format_excel_sheet(self, ws, row: int) -> None:
+    def format_excel_sheet(self, ws: worksheet, row: int) -> None:
         ws.row_dimensions[row].height = 185
         ws.column_dimensions["B"].width = 2
         ws.column_dimensions["C"].width = 28
 
     # Format and temp store QR Codes
-    def format_qrcode_images(self, img, num: int) -> Image:
+    def format_qrcode_images(self, img: image, num: int) -> Image:
         # Create temp buffer to store image
         buffer = BytesIO()
         img.save(buffer, format="PNG")
@@ -243,7 +246,47 @@ class App(TkinterDnD.Tk):
         img.anchor = f"C{num}"
         return img
 
-    # Clear Active Frames
-    def clear_drop_frame_text(self) -> None:
+    # Reset Active Frames
+    def reset_drop_frame_related_frames(self) -> None:
+        self.button_frame = ButtonFrame(self, title="Functions")
+        self.button_frame.grid(row=0, column=0, padx=10, pady=(10,0), sticky="nsew")
+        self.button_frame.configure(border_width=1, border_color="black")
+
         if hasattr(self, "drop_frame_text"):
             self.drop_frame_text.destroy()
+
+    # Filters file types based on count
+    def count_and_filter_file_types(self) -> list[str]:
+        excel_file_count = 0
+        pdf_file_count = 0
+        excel_files = []
+        pdf_files = []
+        # Count file type
+
+        for file in self.files:
+            if file.endswith(".xlsx"):
+                excel_files.append(file)
+                excel_file_count += 1
+            elif file.endswith(".pdf"):
+                pdf_files.append(file)
+                pdf_file_count += 1
+
+        # Set state based on file type count, return filtered list
+        if excel_file_count == len(self.files) or excel_file_count > pdf_file_count:
+            self.set_button_frame_functions("Excel")
+            return excel_files
+        elif pdf_file_count == len(self.files) or pdf_file_count > excel_file_count:
+            self.set_button_frame_functions("PDF")
+            return pdf_files
+
+    # Set button frame functionality
+    def set_button_frame_functions(self, button_type: str) -> ButtonFrame:
+        # Set ButtonFrame buttons & settings
+        match button_type:
+            case "Excel":
+                self.button_frame = ButtonFrame(self, title="Excel Functions", text=["Create QR Codes"],commands=[self.create_qrcodes])
+            case "PDF":
+                self.button_frame = ButtonFrame(self, title="PDF Functions", text=["Remove PDF Password"],commands=[self.remove_pdf_password])
+
+        self.button_frame.grid(row=0, column=0, padx=10, pady=(10,0), sticky="nsew")
+        self.button_frame.configure(border_width=1, border_color="black")
