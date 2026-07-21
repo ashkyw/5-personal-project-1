@@ -4,7 +4,8 @@ import customtkinter as ctk
 from io import BytesIO
 from tkinterdnd2 import DND_FILES, TkinterDnD
 from openpyxl.drawing.image import Image
-from pypdf import PdfReader
+from pypdf import PdfReader, PdfWriter
+from pypdf.errors import FileNotDecryptedError
 
 class TopLevelWindow(ctk.CTkToplevel):
     def __init__(self, master, text: str):
@@ -207,8 +208,22 @@ class App(TkinterDnD.Tk):
                     self.reset_drop_frame_related_frames()
 
     # Removes PDF password, reformats file name
-    def remove_pdf_password(self) -> None:
-        print("It's a newly formatted PDF!")
+    def remove_pdf_password(self, pdf_password="111111") -> None:
+        for file in self.files:
+            reader = PdfReader(file)
+            try:
+                path, filename = file.split("_")
+                throwaway, extension = filename.split(".")
+                reader.decrypt(pdf_password)
+                writer = PdfWriter(clone_from=reader)
+                writer.write(f"{path.strip()}.{extension.strip()}")
+            except FileNotDecryptedError:
+                self.remove_pdf_password(self.get_user_input("Missing Password", "Enter password"))
+
+    # Create a dialog box to return user input
+    def get_user_input(self, title: str, text: str) -> user_input:
+        dialog = ctk.CTkInputDialog(text=text, title=title)
+        return dialog.get_input()
 
     # Helper Functions
     # Hands files off to other functions, displays files in list
@@ -218,9 +233,12 @@ class App(TkinterDnD.Tk):
         # If frame exists, reset it
         self.reset_drop_frame_related_frames()
 
+        # Set self.files to filtered list
+        self.files = self.count_and_filter_file_types()
+
         # Set child labels & values
         try:
-            self.drop_frame_text = LabelText(self.drop_frame, values=self.count_and_filter_file_types())
+            self.drop_frame_text = LabelText(self.drop_frame, values=self.files)
             self.drop_frame_text.grid(row=1, column=0, padx=10, pady=(10,0), sticky="ew")
         except Exception:
             self.create_toplevel_window(title="Error", text="Cannot filter file types.", )
