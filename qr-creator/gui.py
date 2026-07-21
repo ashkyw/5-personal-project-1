@@ -1,6 +1,7 @@
 import qrcode
 import openpyxl
 import customtkinter as ctk
+import os
 from io import BytesIO
 from tkinterdnd2 import DND_FILES, TkinterDnD
 from openpyxl.drawing.image import Image
@@ -212,11 +213,10 @@ class App(TkinterDnD.Tk):
         for file in self.files:
             reader = PdfReader(file)
             try:
-                path, filename = file.split("_")
-                throwaway, extension = filename.split(".")
+                new_path = self.create_and_validate_new_file_path(file)
                 reader.decrypt(pdf_password)
                 writer = PdfWriter(clone_from=reader)
-                writer.write(f"{path.strip()}.{extension.strip()}")
+                writer.write(new_path)
             except FileNotDecryptedError:
                 self.remove_pdf_password(self.get_user_input("Missing Password", "Enter password"))
 
@@ -226,6 +226,29 @@ class App(TkinterDnD.Tk):
         return dialog.get_input()
 
     # Helper Functions
+    # Create new file path, send it to validate
+    def create_and_validate_new_file_path(self, file: str) -> str:
+        new_folder = "/cleaned/"
+        path = os.path.dirname(file)
+        current_file = os.path.splitext(os.path.basename(file))
+        extension = current_file[-1]
+        file_name = current_file[0].split(" _")
+
+        file_name = file_name[0]
+        if len(file_name) >= 12 and len(file_name) < 13:
+            file_name = file_name[:-1]
+
+        self.validate_file_path(f"{path}{new_folder}")
+        return f"{path}{new_folder}{file_name}{extension}"
+
+    # Check if file path exists & make it if not
+    def validate_file_path(self, file_path: str) -> None:
+        try:
+            if not os.path.exists(file_path):
+                os.makedirs(file_path)
+        except Exception:
+            self.create_toplevel_window(title="Error", text="Something happened.", )
+
     # Hands files off to other functions, displays files in list
     def files_dropped(self, files: list[str]) -> None:
         self.files: list[str] = files
