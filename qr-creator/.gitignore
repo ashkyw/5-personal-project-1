@@ -3,3 +3,6 @@ pyproject.toml
 .python-version
 __pycache__
 .venv
+build
+dist
+main.spec
