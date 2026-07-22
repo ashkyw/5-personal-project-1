@@ -262,6 +262,8 @@ class App(TkinterDnD.Tk):
     def remove_pdf_password(self, pdf_password="111111") -> None:
         for file in self.files:
             reader = PdfReader(file)
+            new_path = self.create_and_validate_new_file_path(file, "/cleaned/")
+
             try:
                 new_path = self.create_and_validate_new_file_path(file, "/cleaned/")
                 reader.decrypt(pdf_password)
@@ -285,10 +287,9 @@ class App(TkinterDnD.Tk):
         extension = current_file[-1]
         if extension == ".pdf":
             file_name = current_file[0].split(" _")
-            file_name = file_name[0]
-            if len(file_name) >= 12 and len(file_name) < 13:
+            file_name = file_name[0].strip()
+            if len(file_name) == 12:
                 file_name = file_name[:-1]
-
             new_path = f"{path}{new_folder}{file_name}{extension}"
         else:
             new_path = f"{path}{new_folder}{current_file[0]}{extension}"
