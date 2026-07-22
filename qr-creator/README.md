@@ -1,1 +1,1 @@
-Allows users to drag-and-drop an Excel File and convert a something to a QR code, and save it next to the item in the workbook for scanning.
+Users can drag files into the application to add QR codes or remove passwords from PDF files.
