@@ -178,11 +178,13 @@ class App(TkinterDnD.Tk):
 
         self.files: list[str] = []
         self.toplevel_window = None
-
-        # valid_extensions: tuple[str] = (".xlsx", ".pdf")
+        """
+        Remove doc strings if excel files are supported
+        valid_extensions: tuple[str] = (".xlsx", ".pdf")
+        first_type, second_type = valid_extensions
+        dnd_title_message: str = f'Files must be saved in "{first_type}" or "{second_type}" format. \n\n Drag files onto this text... '
+        """
         valid_extensions: str = ".pdf"
-        # first_type, second_type = valid_extensions
-        # dnd_title_message: str = f'Files must be saved in "{first_type}" or "{second_type}" format. \n\n Drag files onto this text... '
         dnd_title_message: str = f'Files must be saved in "{valid_extensions}" format. \n\n Drag files onto this text... '
 
         self.reset_drop_frame_related_frames()
